@@ -1,9 +1,9 @@
-# blogicum/blog/views.py
 from django.shortcuts import render, get_object_or_404, redirect
 from django.core.paginator import Paginator
 from django.contrib.auth.decorators import login_required
 from django.utils import timezone
 from django.db.models import Count
+from django.http import Http404
 from .models import Post, Category, Comment
 from .forms import PostForm, CommentForm
 
@@ -31,20 +31,25 @@ def index(request):
 
 def post_detail(request, post_id):
     template_name = 'blog/detail.html'
-    post = get_object_or_404(
-        Post.objects.select_related('category'),
-        pub_date__lte=timezone.now(),
-        pk=post_id,
-        is_published=True,
-        category__is_published=True
-    )
-
-    comments = post.comments.all()
-
-    form = None
     
 
-    if request.user.is_authenticated:
+    post = get_object_or_404(Post.objects.select_related('category', 'author'), pk=post_id)
+    
+
+    is_author = request.user == post.author
+    can_view = is_author or (
+        post.is_published and 
+        post.pub_date <= timezone.now() and 
+        post.category.is_published
+    )
+    
+    if not can_view:
+        raise Http404("Пост не найден")
+
+    comments = post.comments.all() if can_view else []
+
+    form = None
+    if request.user.is_authenticated and can_view:
         if request.method == 'POST':
             form = CommentForm(request.POST)
             if form.is_valid():
@@ -60,6 +65,7 @@ def post_detail(request, post_id):
         'post': post,
         'comments': comments,
         'form': form,
+        'is_author': is_author,
     }
     return render(request, template_name, context)
 
