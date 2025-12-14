@@ -27,10 +27,9 @@ urlpatterns = [
     path('auth/', include('django.contrib.auth.urls')),
     path('auth/', include('users.urls')),
     path('registration/', users_views.registration, name='registration'),
-]+ static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 
 
 handler403 = views.csrf_failure
 handler404 = views.custom_404
 handler500 = 'pages.views.custom_500'
-
