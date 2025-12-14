@@ -118,11 +118,11 @@ class Comment(models.Model):
         auto_now_add=True,
         verbose_name='Добавлено'
     )
-    
+
     class Meta:
         ordering = ('created_at',)
         verbose_name = 'комментарий'
         verbose_name_plural = 'Комментарии'
-    
+
     def __str__(self):
         return f'Комментарий {self.author} к посту {self.post.id}'
