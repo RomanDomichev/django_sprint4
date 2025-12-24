@@ -8,10 +8,31 @@ from .models import Post, Category, Comment
 from .forms import PostForm, CommentForm
 
 
+def get_published_posts():
+    # Фильтрация опубликованных постов
+    return Post.objects.filter(
+        is_published=True,
+        pub_date__lte=timezone.now(),
+        category__is_published=True
+    )
+
+
+def annotate_comment_count(queryset):
+    # Количество комменов
+    return queryset.annotate(comment_count=Count('comments'))
+
+
+def paginate_queryset(queryset, request, per_page=10):
+    # Пагинация
+    paginator = Paginator(queryset, per_page)
+    page_number = request.GET.get('page')
+    return paginator.get_page(page_number)
+
+
 def index(request):
     template_name = 'blog/index.html'
 
-    post_list = Post.objects.select_related('category').filter(
+    """post_list = Post.objects.select_related('category').filter(
         pub_date__lte=timezone.now(),
         is_published=True,
         category__is_published=True
@@ -21,7 +42,13 @@ def index(request):
 
     paginator = Paginator(post_list, 10)
     page_number = request.GET.get('page')
-    page_obj = paginator.get_page(page_number)
+    page_obj = paginator.get_page(page_number)"""
+
+    post_list = get_published_posts()
+    post_list = annotate_comment_count(post_list)
+    post_list = post_list.select_related('category').order_by('-pub_date')
+
+    page_obj = paginate_queryset(post_list, request)
 
     context = {
         'page_obj': page_obj
@@ -76,7 +103,7 @@ def category_posts(request, slug):
         is_published=True
     )
 
-    post_list = Post.objects.select_related('category', 'location').filter(
+    """post_list = Post.objects.select_related('category', 'location').filter(
         category=category,
         pub_date__lte=timezone.now(),
         is_published=True
@@ -85,8 +112,14 @@ def category_posts(request, slug):
     ).order_by('-pub_date')
 
     paginator = Paginator(post_list, 10)
-    page_number = request.GET.get('page')
-    page_obj = paginator.get_page(page_number)
+    page_number = request.GET.get('page')"""
+
+    post_list = get_published_posts().filter(category=category)
+    post_list = annotate_comment_count(post_list)
+    post_list = post_list.select_related('category', 'location').order_by(
+        '-pub_date'
+        )
+    page_obj = paginate_queryset(post_list, request)
 
     context = {
         'category': category,

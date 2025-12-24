@@ -9,30 +9,27 @@ from django.utils import timezone
 from blog.models import Post
 from django.db.models import Count
 from .forms import CustomUserChangeForm
+from blog.views import annotate_comment_count #
 
 
 def profile(request, username):
-    """Страница профиля пользователя."""
     profile_user = get_object_or_404(User, username=username)
-    
-    # Получаем ВСЕ публикации пользователя
-    post_list = Post.objects.filter(author=profile_user).annotate(
-        comment_count=Count('comments')  # <-- ДОБАВИТЬ
-    ).order_by('-pub_date')
-    
-    # Если это не автор смотрит страницу - показываем только опубликованные
+    #
+    post_list = Post.objects.filter(author=profile_user)
+    #
+    post_list = annotate_comment_count(post_list)
+
     if request.user != profile_user:
         post_list = post_list.filter(
             is_published=True,
             pub_date__lte=timezone.now(),
             category__is_published=True
         )
-    
-    # Добавляем пагинацию
-    paginator = Paginator(post_list, 10)
+
+    paginator = Paginator(post_list.order_by('-pub_date'), 10)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
-    
+
     context = {
         'profile': profile_user,
         'page_obj': page_obj,
@@ -40,7 +37,6 @@ def profile(request, username):
     return render(request, 'blog/profile.html', context)
 
 def registration(request):
-    """Регистрация нового пользователя."""
     if request.method == 'POST':
         form = UserCreationForm(request.POST)
         if form.is_valid():
@@ -54,7 +50,6 @@ def registration(request):
 
 @login_required
 def edit_profile(request):
-    """Редактирование профиля пользователя."""
     if request.method == 'POST':
         form = CustomUserChangeForm(request.POST, instance=request.user)
         if form.is_valid():
